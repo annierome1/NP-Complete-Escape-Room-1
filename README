@@ -1,0 +1,35 @@
+# NP-Complete Escape Room Game
+
+This project is a web-based interactive escape room game designed to demonstrate NP-completeness and NP-hardness through Hamiltonian path puzzles. The game challenges players to navigate through a series of procedurally generated rooms—each with a unique description produced by a context-free grammar (CFG)—while a pushdown automata (PDA) tracks their moves.
+
+## Features
+
+- **Procedural Room Generation:**  
+  Room descriptions are generated dynamically using a CFG, ensuring each playthrough offers a unique narrative experience.
+
+- **Hamiltonian Path Puzzle:**  
+  The game graph is constructed with a guaranteed Hamiltonian path (the solution path) plus additional random connections that mimic the complexity of NP-hard problems. Once a player leaves a room, its doors are locked, enforcing a one-way traversal akin to a Hamiltonian path.
+
+- **State Management with PDA:**  
+  A simple PDA tracks player moves, simulating memory management and state transitions involved in computational puzzles.
+
+- **Win/Loss Conditions:**  
+  Players must visit all rooms to win. If they become stuck with no available moves before visiting every room, they lose.
+
+## Educational Purpose
+
+This project is inspired by academic research in several fields:
+- **Hamiltonian Path Theory & NP-Completeness:**  
+  Referenced in works by Sara and Mayer & Wünch.
+- **Graph Grammar-Based Puzzle Generation:**  
+  Inspired by research from Zhang & Wang.
+- **Pushdown Automata in Game State Management:**  
+  Influenced by concepts presented by Garfinkel.
+
+The goal is to provide a non-technical audience with an intuitive, hands-on experience of complex computational theories.
+
+## Getting Started
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-username/np-complete-escape-room.git
