@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -21,6 +22,22 @@
       border-radius: 8px;
       box-shadow: 0 0 10px #000;
     }
+
+    #game-map {
+    display: none;
+    flex: 1;
+    border: 1px solid #ccc;
+    padding: 10px;
+    background: #f9f9f9;
+    }
+
+    #room-count{
+      width: 150px;
+      height: 20px;
+      font-size: small;
+
+    }
+
     button {
       margin: 5px;
       padding: 10px 20px;
@@ -38,6 +55,10 @@
       background: #555;
       cursor: not-allowed;
     }
+
+    #btn-restart{
+      display: none;
+    }
     ul {
       list-style: none;
       padding: 0;
@@ -52,13 +73,97 @@
     <h1>Escape Room Game</h1>
     <div id="game-output">
       <p>Welcome! Click "Start Game" to begin your escape.</p>
+      <div id = "game-map"></div>
     </div>
+    
     <div id="controls">
+      <input type = "number" id="room-count" min = "1" max = "25" placeholder="Enter number of rooms">
       <button id="btn-start">Start Game</button>
+      <button id = "btn-restart">Restart Game</button>
+      
+
     </div>
   </div>
 
   <script>
+    function drawMap(game) {
+  const mapContainer = document.getElementById("game-map");
+  if (!mapContainer) {
+    console.error("Map container not found!");
+    return;
+  }
+  mapContainer.innerHTML = "";
+
+  //Create an SVG element
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("width", "400");
+  svg.setAttribute("height", "400");
+  mapContainer.appendChild(svg);
+
+  //Calculate room positions in a circle
+  const centerX = 200, centerY = 200, radius = 150;
+  const roomPositions = {};
+  const numRooms = game.graph.numRooms;
+  for (let i = 0; i < numRooms; i++) {
+    const angle = (2 * Math.PI * i) / numRooms;
+    const x = centerX + radius * Math.cos(angle);
+    const y = centerY + radius * Math.sin(angle);
+    roomPositions[i] = { x, y };
+  }
+
+  //Draw edges (connections between rooms)
+  for (const room in game.graph.edges) {
+    const fromPos = roomPositions[room];
+    game.graph.edges[room].forEach(neighbor => {
+      // Only draw one edge for each pair to avoid duplicates
+      if (parseInt(neighbor) > parseInt(room)) {
+        const toPos = roomPositions[neighbor];
+        const line = document.createElementNS(svgNS, "line");
+        line.setAttribute("x1", fromPos.x);
+        line.setAttribute("y1", fromPos.y);
+        line.setAttribute("x2", toPos.x);
+        line.setAttribute("y2", toPos.y);
+        line.setAttribute("stroke", "black");
+        svg.appendChild(line);
+      }
+    });
+  }
+
+  // 3. Draw room nodes
+  for (let i = 0; i < numRooms; i++) {
+    const { x, y } = roomPositions[i];
+    const circle = document.createElementNS(svgNS, "circle");
+    circle.setAttribute("cx", x);
+    circle.setAttribute("cy", y);
+    circle.setAttribute("r", 15);
+
+    // Determine fill color:
+    // - Current room: red
+    // - Visited (and not current): gray
+    // - Unvisited: blue
+    let fillColor;
+    if (i === game.currentRoom) {
+      fillColor = "red";
+    } else if (game.visited.has(i)) {
+      fillColor = "gray";
+    } else {
+      fillColor = "blue";
+    }
+    circle.setAttribute("fill", fillColor);
+    svg.appendChild(circle);
+
+    // Add room label (number)
+    const text = document.createElementNS(svgNS, "text");
+    text.setAttribute("x", x - 5);
+    text.setAttribute("y", y + 5);
+    text.setAttribute("fill", "white");
+    text.setAttribute("font-size", "12");
+    text.textContent = i;
+    svg.appendChild(text);
+  }
+}
+
     // =======================
     // Pushdown Automata (PDA)
     // =======================
@@ -89,6 +194,8 @@
     // ================================
     // This CFG dynamically generates room descriptions.
     // See Fitch & Friederici (2012) and ShaggyDev (2022) for details on generative grammars.
+
+    //Add riddles for player to solve based on on CFG rules
     class CFG {
       constructor() {
         this.rules = {
@@ -180,12 +287,23 @@
         this.gameOver = false;
       }
       start() {
+        const mapContainer = document.getElementById("game-map");
+        mapContainer.style.display = "block";
         this.renderRoom();
       }
       renderRoom() {
         const room = this.graph.rooms[this.currentRoom];
         const outputDiv = document.getElementById("game-output");
-        outputDiv.innerHTML = `<p>${room.description}</p>`;
+        outputDiv.innerHTML = `<p>${room.description}</p>
+        <div id = "game-map" style = "display: block;"></div>`;
+
+        const existingMap = document.getElementById("game-map");
+        if(!existingMap){
+          const mapDiv = document.createElement("div");
+          mapDiv.id = "game-map";
+          mapDiv.style.display = "block";
+          outputDiv.appendChild(mapDiv);
+        }
         
         // Build list of available moves.
         let movesHtml = "<p>Available Exits:</p><ul>";
@@ -221,8 +339,10 @@
           button.addEventListener("click", (e) => {
             const nextRoom = parseInt(e.target.getAttribute("data-room"));
             this.moveToRoom(nextRoom);
-          });
+            drawMap(this);
+          }); 
         });
+        
       }
       moveToRoom(roomID) {
         if (this.gameOver) return;
@@ -249,9 +369,35 @@
     // The "Start Game" button creates a new game instance. The number of rooms can be adjusted
     // to demonstrate how complexity scales exponentially (see Demaine et al., 2024).
     document.getElementById("btn-start").addEventListener("click", () => {
-      const game = new Game(10); // Increase room count for higher complexity.
+      const roomCountInput = document.getElementById("room-count");
+      let numRooms = parseInt(roomCountInput.value, 10);
+      const maxRooms = 25; // maximum allowed number of rooms
+
+      // input is atleast 1
+      if (isNaN(numRooms) || numRooms < 1) {
+        alert("Please enter a valid number of rooms.");
+        return;
+      }
+      //max limit
+      if (numRooms > maxRooms) {
+        alert("Maximum allowed number of rooms is " + maxRooms + ". Setting to maximum.");
+        numRooms = maxRooms;
+      }
+
+      roomCountInput.style.display = "none";
+      document.getElementById("btn-start").style.display = "none";
+      document.getElementById("btn-restart").style.display = "inline-block";
+
+      const game = new Game(numRooms);
       game.start();
     });
+
+    //Restart Game
+    document.getElementById("btn-restart").addEventListener("click", () => {
+      window.location.reload();
+
+    });
+
   </script>
 </body>
 </html>
